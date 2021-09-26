@@ -1,8 +1,11 @@
 package com.product.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.product.dto.Pagination;
+import com.product.dto.Response;
 import com.product.model.Product;
 import com.product.repository.ProductRepository;
+import com.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,15 +14,17 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -35,19 +40,25 @@ class ProductControllerTest {
     @MockBean
     private ProductRepository productRepository;
 
+    @MockBean
+    private ProductService service;
+
     @Test
     public void givenProducts_whenGetProducts_thenContentAndStatus200() throws Exception {
 
         var products = List.of(new Product("Vaqueiro Curto", "Nuevo estilo de Vaqueiro curto"));
-        when(productRepository.findAll(any(Pageable.class)))
-                .thenReturn(new PageImpl<>(products));
+        PageImpl<Product> pageProducts = new PageImpl<>(products);
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenReturn(new Response<>(products,
+                        new Pagination(pageProducts.getNumber(), pageProducts.getTotalElements(), pageProducts.getTotalPages())));
+
         mockMvc.perform(get("/api/products")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("totalItems", is(1)))
-                .andExpect(jsonPath("totalPages", is(1)))
-                .andExpect(jsonPath("currentPage", is(0)))
+                .andExpect(jsonPath("pagination.totalItems", is(1)))
+                .andExpect(jsonPath("pagination.totalPages", is(1)))
+                .andExpect(jsonPath("pagination.currentPage", is(0)))
                 .andExpect(jsonPath("$['data'][0].id", is(0)))
                 .andExpect(jsonPath("$['data'][0].name", is(products.get(0).getName())))
                 .andExpect(jsonPath("$['data'][0].description", is(products.get(0).getDescription())));
@@ -56,8 +67,9 @@ class ProductControllerTest {
 
     @Test
     public void givenProducts_whenGetProducts_thenNotContentAndStatus204() throws Exception {
-        when(productRepository.findAll(any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Collections.emptyList()));
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.NO_CONTENT, "Products Not Found"));
 
         mockMvc.perform(get("/api/products")
                         .contentType(MediaType.APPLICATION_JSON))
@@ -73,7 +85,7 @@ class ProductControllerTest {
                 .contentType(MediaType.APPLICATION_JSON));
 
         ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
-        verify(productRepository).findAll(pageableCaptor.capture());
+        verify(service).searchProduct(any(), any(), pageableCaptor.capture());
         PageRequest pageable = (PageRequest) pageableCaptor.getValue();
 
         assertEquals(1, pageable.getPageNumber());
@@ -84,32 +96,37 @@ class ProductControllerTest {
     public void givenProducts_whenGetProductsAndFilterName_thenContentAndStatus200() throws Exception {
 
         var products = List.of(new Product("Vaqueiro Curto", "Nuevo estilo de Vaqueiro curto"));
-        when(productRepository.getAllByNameContaining(any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(products));
+        PageImpl<Product> pageProducts = new PageImpl<>(products);
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenReturn(new Response<>(products,
+                        new Pagination(pageProducts.getNumber(), pageProducts.getTotalElements(), pageProducts.getTotalPages())));
         mockMvc.perform(get("/api/products")
                         .param("name", "Curto")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("totalItems", is(1)))
-                .andExpect(jsonPath("totalPages", is(1)))
-                .andExpect(jsonPath("currentPage", is(0)))
+                .andExpect(jsonPath("pagination.totalItems", is(1)))
+                .andExpect(jsonPath("pagination.totalPages", is(1)))
+                .andExpect(jsonPath("pagination.currentPage", is(0)))
                 .andExpect(jsonPath("$['data'][0].id", is(0)))
                 .andExpect(jsonPath("$['data'][0].name", is(products.get(0).getName())))
                 .andExpect(jsonPath("$['data'][0].description", is(products.get(0).getDescription())));
 
 
         ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
-        verify(productRepository).getAllByNameContaining(nameCaptor.capture(),
+        ArgumentCaptor<String> descriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(service).searchProduct(nameCaptor.capture(), descriptionCaptor.capture(),
                 ArgumentCaptor.forClass(Pageable.class).capture());
 
         assertEquals("Curto", nameCaptor.getValue());
+        assertNull(descriptionCaptor.getValue());
     }
 
     @Test
     public void givenNone_whenGetProductsAndFilterName_thenNotContentAndStatus204() throws Exception {
-        when(productRepository.getAllByNameContaining(any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Collections.emptyList()));
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.NO_CONTENT, "Products Not Found"));
 
         mockMvc.perform(get("/api/products")
                         .param("name", "Curto")
@@ -118,7 +135,8 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$").doesNotExist());
 
         ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
-        verify(productRepository).getAllByNameContaining(nameCaptor.capture(),
+        ArgumentCaptor<String> descriptionCaptor = ArgumentCaptor.forClass(String.class);
+        verify(service).searchProduct(nameCaptor.capture(), descriptionCaptor.capture(),
                 ArgumentCaptor.forClass(Pageable.class).capture());
 
         assertEquals("Curto", nameCaptor.getValue());
@@ -128,22 +146,25 @@ class ProductControllerTest {
     public void givenProducts_whenGetProductsAndFilterDescription_thenContentAndStatus200() throws Exception {
 
         var products = List.of(new Product("Vaqueiro Curto", "Nuevo estilo de Vaqueiro curto"));
-        when(productRepository.getAllByDescriptionContaining(any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(products));
+        PageImpl<Product> pageProducts = new PageImpl<>(products);
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenReturn(new Response<>(products,
+                        new Pagination(pageProducts.getNumber(), pageProducts.getTotalElements(), pageProducts.getTotalPages())));
         mockMvc.perform(get("/api/products")
                         .param("description", "Vaqueiro")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("totalItems", is(1)))
-                .andExpect(jsonPath("totalPages", is(1)))
-                .andExpect(jsonPath("currentPage", is(0)))
+                .andExpect(jsonPath("pagination.totalItems", is(1)))
+                .andExpect(jsonPath("pagination.totalPages", is(1)))
+                .andExpect(jsonPath("pagination.currentPage", is(0)))
                 .andExpect(jsonPath("$['data'][0].id", is(0)))
                 .andExpect(jsonPath("$['data'][0].name", is(products.get(0).getName())))
                 .andExpect(jsonPath("$['data'][0].description", is(products.get(0).getDescription())));
 
+        ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> descriptionCaptor = ArgumentCaptor.forClass(String.class);
-        verify(productRepository).getAllByDescriptionContaining(descriptionCaptor.capture(),
+        verify(service).searchProduct(nameCaptor.capture(), descriptionCaptor.capture(),
                 ArgumentCaptor.forClass(Pageable.class).capture());
 
         assertEquals("Vaqueiro", descriptionCaptor.getValue());
@@ -151,8 +172,9 @@ class ProductControllerTest {
 
     @Test
     public void givenNone_whenGetProductsAndFilterDescription_thenNotContentAndStatus204() throws Exception {
-        when(productRepository.getAllByDescriptionContaining(any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Collections.emptyList()));
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.NO_CONTENT, "Products Not Found"));
 
         mockMvc.perform(get("/api/products")
                         .param("description", "Vaqueiro")
@@ -160,8 +182,9 @@ class ProductControllerTest {
                 .andExpect(status().is2xxSuccessful())
                 .andExpect(jsonPath("$").doesNotExist());
 
+        ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> descriptionCaptor = ArgumentCaptor.forClass(String.class);
-        verify(productRepository).getAllByDescriptionContaining(descriptionCaptor.capture(),
+        verify(service).searchProduct(nameCaptor.capture(), descriptionCaptor.capture(),
                 ArgumentCaptor.forClass(Pageable.class).capture());
 
         assertEquals("Vaqueiro", descriptionCaptor.getValue());
@@ -172,24 +195,25 @@ class ProductControllerTest {
 
         var products = List.of(new Product("Vaqueiro Curto", "Nuevo estilo de Vaqueiro curto"));
 
-        when(productRepository.getAllByNameContainingAndDescriptionContaining(any(), any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(products));
+        PageImpl<Product> pageProducts = new PageImpl<>(products);
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenReturn(new Response<>(products,
+                        new Pagination(pageProducts.getNumber(), pageProducts.getTotalElements(), pageProducts.getTotalPages())));
         mockMvc.perform(get("/api/products")
                         .param("name", "Curto")
                         .param("description", "Vaqueiro")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("totalItems", is(1)))
-                .andExpect(jsonPath("totalPages", is(1)))
-                .andExpect(jsonPath("currentPage", is(0)))
+                .andExpect(jsonPath("pagination.totalItems", is(1)))
+                .andExpect(jsonPath("pagination.totalPages", is(1)))
+                .andExpect(jsonPath("pagination.currentPage", is(0)))
                 .andExpect(jsonPath("$['data'][0].id", is(0)))
                 .andExpect(jsonPath("$['data'][0].name", is(products.get(0).getName())))
                 .andExpect(jsonPath("$['data'][0].description", is(products.get(0).getDescription())));
-
         ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> descriptionCaptor = ArgumentCaptor.forClass(String.class);
-        verify(productRepository).getAllByNameContainingAndDescriptionContaining(nameCaptor.capture(), descriptionCaptor.capture(),
+        verify(service).searchProduct(nameCaptor.capture(), descriptionCaptor.capture(),
                 ArgumentCaptor.forClass(Pageable.class).capture());
 
         assertEquals("Curto", nameCaptor.getValue());
@@ -198,8 +222,9 @@ class ProductControllerTest {
 
     @Test
     public void givenNone_whenGetProductsAndFilterNameAndDescription_thenNotContentAndStatus204() throws Exception {
-        when(productRepository.getAllByNameContainingAndDescriptionContaining(any(), any(), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(Collections.emptyList()));
+        when(service.searchProduct(any(), any(), any(Pageable.class)))
+                .thenThrow(new ResponseStatusException(
+                        HttpStatus.NO_CONTENT, "Products Not Found"));
 
         mockMvc.perform(get("/api/products")
                         .param("name", "Curto")
@@ -210,7 +235,7 @@ class ProductControllerTest {
 
         ArgumentCaptor<String> nameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> descriptionCaptor = ArgumentCaptor.forClass(String.class);
-        verify(productRepository).getAllByNameContainingAndDescriptionContaining(nameCaptor.capture(), descriptionCaptor.capture(),
+        verify(service).searchProduct(nameCaptor.capture(), descriptionCaptor.capture(),
                 ArgumentCaptor.forClass(Pageable.class).capture());
 
         assertEquals("Curto", nameCaptor.getValue());
@@ -368,6 +393,7 @@ class ProductControllerTest {
                 .andExpect(status().isBadRequest());
 
     }
+
     @Test
     public void givenProduct_whenDeleteProduct_thenStatus204() throws Exception {
         mockMvc.perform(delete("/api/products/{id}", 0)

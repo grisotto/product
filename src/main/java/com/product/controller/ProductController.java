@@ -1,9 +1,10 @@
 package com.product.controller;
 
+import com.product.dto.Response;
 import com.product.model.Product;
 import com.product.repository.ProductRepository;
+import com.product.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -11,8 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -20,42 +19,18 @@ import java.util.Optional;
 public class ProductController {
 
     @Autowired
-    ProductRepository repository;
+    private ProductRepository repository;
+
+    @Autowired
+    private ProductService service;
 
     @GetMapping("/products")
-    public ResponseEntity<Map<String, Object>> getAllProducts(
+    public ResponseEntity<Response<Product>> getAllProducts(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String description,
             @PageableDefault(page = 0, size = 3) Pageable pageable) {
-        try {
-
-            Page<Product> pageProducts;
-            if (name == null && description == null) {
-                pageProducts = repository.findAll(pageable);
-            } else {
-                if (name == null) {
-                    pageProducts = repository.getAllByDescriptionContaining(description, pageable);
-                } else {
-                    pageProducts = description == null ?
-                            repository.getAllByNameContaining(name, pageable) :
-                            repository.getAllByNameContainingAndDescriptionContaining(name, description, pageable);
-                }
-            }
-
-            if (pageProducts.isEmpty()) {
-                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-            }
-            Map<String, Object> response = new HashMap<>();
-            response.put("data", pageProducts.getContent());
-            response.put("currentPage", pageProducts.getNumber());
-            response.put("totalItems", pageProducts.getTotalElements());
-            response.put("totalPages", pageProducts.getTotalPages());
-            return new ResponseEntity<>(response, HttpStatus.OK);
-
-
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        Response<Product> productProductResponse = service.searchProduct(name, description, pageable);
+        return new ResponseEntity<>(productProductResponse, HttpStatus.OK);
     }
 
     @PostMapping("/products")

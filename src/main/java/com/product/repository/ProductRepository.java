@@ -1,17 +1,8 @@
 package com.product.repository;
 
 import com.product.model.Product;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.repository.PagingAndSortingRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface ProductRepository extends PagingAndSortingRepository<Product, Long> {
-
-    Page<Product> getAllByNameContaining(String name, Pageable pageable);
-
-    Page<Product> getAllByDescriptionContaining(String description, Pageable pageable);
-
-    Page<Product> getAllByNameContainingAndDescriptionContaining(String name, String descripton, Pageable pageable);
-
-
+public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
 }
