@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -58,7 +59,7 @@ public class ProductController {
     }
 
     @PostMapping("/products")
-    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
+    public ResponseEntity<Product> createProduct(@RequestBody @Valid Product product) {
         try {
             var _product = repository
                     .save(new Product(product.getName(), product.getDescription()));
@@ -78,7 +79,7 @@ public class ProductController {
     }
 
     @PutMapping("/products/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable("id") long id, @RequestBody Product product) {
+    public ResponseEntity<Product> updateProduct(@PathVariable("id") long id, @RequestBody @Valid Product product) {
         Optional<Product> oldProduct = repository.findById(id);
         return oldProduct.map(value ->
         {

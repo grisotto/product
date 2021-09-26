@@ -4,6 +4,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 @Entity
@@ -14,9 +15,11 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
+    @NotNull
     @Column(name = "name")
     private String name;
 
+    @NotNull
     @Column(name = "description")
     private String description;
 

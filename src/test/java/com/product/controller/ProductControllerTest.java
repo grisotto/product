@@ -238,6 +238,30 @@ class ProductControllerTest {
     }
 
     @Test
+    public void givenProductWithNullName_whenCreateProduct_thenErrorAndStatus400() throws Exception {
+        var product = new Product("Vaqueiro Curto", null);
+
+        mockMvc.perform(post("/api/products")
+                        .content(asJsonString(product))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$").doesNotExist());
+
+    }
+
+    @Test
+    public void givenProductWithNullDescription_whenCreateProduct_thenErrorAndStatus400() throws Exception {
+        var product = new Product(null, "Nuevo estilo de Vaqueiro curto");
+
+        mockMvc.perform(post("/api/products")
+                        .content(asJsonString(product))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$").doesNotExist());
+
+    }
+
+    @Test
     public void givenProduct_whenGetProductById_thenResultAndStatus200() throws Exception {
         var product = Optional.of(new Product("Vaqueiro Curto", "Nuevo estilo de Vaqueiro curto"));
         when(productRepository.findById(any()))
@@ -323,6 +347,27 @@ class ProductControllerTest {
 
     }
 
+    @Test
+    public void givenProductWithNullName_whenUpdateProduct_thenErrorAndStatus404() throws Exception {
+        var newProduct = new Product(null, "Nuevo estilo de Vaqueiro curto Verano");
+
+        mockMvc.perform(put("/api/products/{id}", 0)
+                        .content(asJsonString(newProduct))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+
+    }
+
+    @Test
+    public void givenProductWithNullDescription_whenUpdateProduct_thenErrorAndStatus404() throws Exception {
+        var newProduct = new Product("Vaqueiro curto", null);
+
+        mockMvc.perform(put("/api/products/{id}", 0)
+                        .content(asJsonString(newProduct))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+
+    }
     @Test
     public void givenProduct_whenDeleteProduct_thenStatus204() throws Exception {
         mockMvc.perform(delete("/api/products/{id}", 0)
