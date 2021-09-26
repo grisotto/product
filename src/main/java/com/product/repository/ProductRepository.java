@@ -1,6 +1,6 @@
-package com.product.product.repository;
+package com.product.repository;
 
-import com.product.product.model.Product;
+import com.product.model.Product;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.PagingAndSortingRepository;

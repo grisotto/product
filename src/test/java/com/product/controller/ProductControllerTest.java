@@ -1,8 +1,8 @@
-package com.product.product.controller;
+package com.product.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.product.product.model.Product;
-import com.product.product.repository.ProductRepository;
+import com.product.model.Product;
+import com.product.repository.ProductRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;

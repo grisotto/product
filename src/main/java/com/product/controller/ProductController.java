@@ -1,7 +1,7 @@
-package com.product.product.controller;
+package com.product.controller;
 
-import com.product.product.model.Product;
-import com.product.product.repository.ProductRepository;
+import com.product.model.Product;
+import com.product.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
