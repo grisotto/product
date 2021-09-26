@@ -4,8 +4,8 @@ import com.product.product.model.Product;
 import com.product.product.repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,21 +25,19 @@ public class ProductController {
     public ResponseEntity<Map<String, Object>> getAllProducts(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String description,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "3") int size) {
+            @PageableDefault(page = 0, size = 3) Pageable pageable) {
         try {
-            Pageable paging = PageRequest.of(page, size);
 
             Page<Product> pageProducts;
             if (name == null && description == null) {
-                pageProducts = repository.findAll(paging);
+                pageProducts = repository.findAll(pageable);
             } else {
                 if (name == null) {
-                    pageProducts = repository.getAllByDescriptionContaining(description, paging);
+                    pageProducts = repository.getAllByDescriptionContaining(description, pageable);
                 } else {
                     pageProducts = description == null ?
-                            repository.getAllByNameContaining(name, paging) :
-                            repository.getAllByNameContainingAndDescriptionContaining(name, description, paging);
+                            repository.getAllByNameContaining(name, pageable) :
+                            repository.getAllByNameContainingAndDescriptionContaining(name, description, pageable);
                 }
             }
 
